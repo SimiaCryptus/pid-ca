@@ -15,6 +15,14 @@ import {
 } from './config.js';
 import { themeFromConfig, buildStatePalette, rgbCss } from './renderer.js';
 import { normalizeMask } from './grid.js';
+import {
+   parsePalette,
+   PALETTE_PRESETS,
+   MAX_PALETTE,
+   unitToHex,
+   luminance,
+   sortPaletteByLuminance,
+} from './dither.js';
 
 function el(tag, cls, text) {
   const node = document.createElement(tag);
@@ -60,6 +68,12 @@ export class UI {
     this.config.subscribe(() => this.syncFromConfig());
     this.sim.on('running', () => this._updatePlayButton());
     this.sim.on('reset', () => this.updateStatus());
+     // Colour targets load asynchronously; keep the read-out in step.
+     this.sim.on('paint', (payload) => {
+       if (payload && payload.dither && this._ditherInfo) {
+         this._ditherInfo.textContent = this.sim.ditherImageInfo || '';
+       }
+     });
 
     this.syncFromConfig();
     this._updatePlayButton();
@@ -132,6 +146,18 @@ export class UI {
         ['integral', 'mean I'],
       ];
     }
+     if (mode === 'dither') {
+       return [
+         ['step', 'step'],
+         ['rate', 'steps/s'],
+         ['err', 'mean |e|'],
+         ['energy', 'Σe²'],
+         ['integral', 'mean I'],
+         ['delta', 'global Δ'],
+         ['gridColor', 'grid mean'],
+         ['targetColor', 'target mean'],
+       ];
+     }
     const fields = [
       ['step', 'step'],
       ['rate', 'steps/s'],
@@ -171,6 +197,19 @@ export class UI {
     if (f.refractory)
       f.refractory.textContent = ((s.refractoryFraction || 0) * 100).toFixed(2) + '%';
     if (f.meanV) f.meanV.textContent = (s.meanV || 0).toFixed(2);
+     if (f.delta) f.delta.textContent = (s.globalDelta || 0).toFixed(4);
+     if (f.gridColor) this._colorStat(f.gridColor, s.gridMean);
+     if (f.targetColor) this._colorStat(f.targetColor, s.targetMean);
+   }
+   /** Status swatch: hex text on a chip filled with the colour itself. */
+   _colorStat(node, rgb) {
+     if (!rgb) return;
+     const hex = unitToHex(rgb);
+     node.textContent = hex;
+     node.style.background = hex;
+     node.style.color = luminance(rgb) > 0.5 ? '#111' : '#fff';
+     node.style.padding = '0 5px';
+     node.style.borderRadius = '3px';
   }
 
   // ---------------------------------------------------------------- panel
@@ -190,6 +229,7 @@ export class UI {
       if (group === 'Painting') body.appendChild(this._buildTargetFieldTools());
       if (group === 'Target') body.appendChild(this._buildTextFieldTools());
       if (group === 'Colours') body.appendChild(this._buildColorTools());
+       if (group === 'Dither (colour target)') body.appendChild(this._buildDitherTools());
       section.append(header, body);
       this._makeCollapsible(section, header);
       this.sections.set(group, section);
@@ -274,6 +314,60 @@ export class UI {
     row.append(select, apply, reset);
     return row;
   }
+   /**
+    * Dither-CA tools (§11): image upload (kept out of the config — only the
+    * URL travels), clear, palette extraction and a target-overlay toggle.
+    */
+   _buildDitherTools() {
+     const row = el('div', 'row');
+     const file = el('input');
+     file.type = 'file';
+     file.accept = 'image/*';
+     file.style.display = 'none';
+     file.addEventListener('change', () => {
+       const f = file.files && file.files[0];
+       if (!f) return;
+       const url = URL.createObjectURL(f);
+       const img = new Image();
+       img.onload = () => {
+         URL.revokeObjectURL(url);
+         this.sim.setDitherImage(img, f.name);
+         if (this.config.get('ditherSource') !== 'image') this.config.set('ditherSource', 'image');
+         else this.syncFromConfig();
+       };
+       img.onerror = () => {
+         URL.revokeObjectURL(url);
+         this._showErrors(['could not decode image "' + f.name + '"']);
+       };
+       img.src = url;
+       file.value = '';
+     });
+     const upload = el('button', 'primary', 'Upload image…');
+     upload.title = 'Use a picture from your computer as the colour target (not stored in share links)';
+     upload.addEventListener('click', () => file.click());
+     const clear = el('button', null, 'Clear image');
+     clear.addEventListener('click', () => {
+       this.sim.clearDitherImage();
+       this.syncFromConfig();
+     });
+     const extract = el('button', null, 'Palette from target');
+     extract.title = 'k-means the current colour target into as many colours as the palette has now';
+     extract.addEventListener('click', () => {
+       const k = parsePalette(this.config.get('ditherPalette')).length;
+       const pal = this.sim.extractPalette(k);
+       if (pal) this.config.set('ditherPalette', pal.join(','));
+     });
+     const show = el('button', null, 'Show target');
+     show.addEventListener('click', () => {
+       const isTarget = this.config.get('overlay') === 'target';
+       this.config.set('overlay', isTarget ? 'none' : 'target');
+     });
+     this._ditherOverlayBtn = show;
+     const info = el('span', 'hint', '');
+     this._ditherInfo = info;
+     row.append(file, upload, clear, extract, show, info);
+     return row;
+   }
   /** Wire a group header to toggle a `.collapsed` class on its section (§9). */
   _makeCollapsible(section, header) {
     header.classList.add('collapsible');
@@ -676,6 +770,85 @@ export class UI {
         if (cells.length !== side * side) rebuild(side);
         paintCells();
       };
+     } else if (spec.type === 'palette') {
+       // Dither-CA palette: one swatch per expressible colour + hex list + presets.
+       const wrap = el('div', 'palette');
+       const swatches = el('div', 'palette-swatches');
+       swatches.style.display = 'flex';
+       swatches.style.flexWrap = 'wrap';
+       swatches.style.gap = '4px';
+       swatches.style.margin = '2px 0 6px';
+       const text = el('input', 'ctl-text');
+       text.type = 'text';
+       text.id = 'ctl-' + key;
+       text.spellcheck = false;
+       text.title = 'Comma-separated #rrggbb colours (2–' + MAX_PALETTE + ')';
+       const tools = el('div', 'row palette-tools');
+       const presetSel = el('select');
+       presetSel.style.flex = '1 1 130px';
+       presetSel.style.width = 'auto';
+       const prompt = el('option');
+       prompt.value = '';
+       prompt.textContent = 'Preset palette…';
+       presetSel.appendChild(prompt);
+       PALETTE_PRESETS.forEach((preset, index) => {
+         const option = el('option');
+         option.value = String(index);
+         option.textContent = preset.name + ' (' + parsePalette(preset.colors).length + ')';
+         presetSel.appendChild(option);
+       });
+       let current = [];
+       const write = (list) => this._push(key, list.join(','));
+       presetSel.addEventListener('change', () => {
+         const preset = PALETTE_PRESETS[Number(presetSel.value)];
+         presetSel.value = '';
+         if (preset) write(parsePalette(preset.colors));
+       });
+       const addBtn = el('button', null, '+ colour');
+       addBtn.addEventListener('click', () => {
+         if (current.length >= MAX_PALETTE) return;
+         const candidates = ['#808080', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+         const fresh =
+           candidates.find((c) => !current.includes(c)) ||
+           '#' + Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+         write([...current, fresh]);
+       });
+       const removeBtn = el('button', null, '− last');
+       removeBtn.addEventListener('click', () => {
+         if (current.length > 2) write(current.slice(0, -1));
+       });
+       const sortBtn = el('button', null, 'Sort by luminance');
+       sortBtn.addEventListener('click', () => write(sortPaletteByLuminance(current)));
+       tools.append(presetSel, addBtn, removeBtn, sortBtn);
+       const rebuild = () => {
+         swatches.textContent = '';
+         current.forEach((hex, k) => {
+           const sw = el('input', 'palette-swatch');
+           sw.type = 'color';
+           sw.value = hex;
+           sw.title = 'state ' + k + ' · ' + hex + ' (click to edit)';
+           sw.style.width = '26px';
+           sw.style.height = '22px';
+           sw.style.padding = '0';
+           sw.style.border = '1px solid rgba(255,255,255,0.15)';
+           sw.style.borderRadius = '3px';
+           sw.addEventListener('change', () => {
+             const next = current.slice();
+             next[k] = sw.value;
+             write(next);
+           });
+           swatches.appendChild(sw);
+         });
+       };
+       text.addEventListener('change', () => write(parsePalette(text.value, current)));
+       wrap.append(swatches, text, tools);
+       field.appendChild(wrap);
+       setValue = (v) => {
+         current = parsePalette(v);
+         const s = current.join(',');
+         if (document.activeElement !== text && text.value !== s) text.value = s;
+         rebuild();
+       };
     } else if (spec.type === 'text') {
       const input = el('input', 'ctl-text');
       input.type = 'text';
@@ -810,16 +983,25 @@ export class UI {
             '%)'
           : '';
     }
+     if (this._ditherInfo) {
+       this._ditherInfo.textContent = cfg.mode === 'dither' ? this.sim.ditherImageInfo || '' : '';
+     }
+     if (this._ditherOverlayBtn) {
+       this._ditherOverlayBtn.textContent = cfg.overlay === 'target' ? 'Hide target' : 'Show target';
+     }
     this._refreshEmbedSnippet();
     this._renderLegend();
     this.updateStatus();
   }
   /** Whole-group visibility: the two domains share the panel (§6.1). */
   _groupVisible(group, cfg) {
-    if (group === 'Membrane (bioelectrical)') return cfg.mode !== 'pid';
+     if (group === 'Membrane (bioelectrical)') {
+       return cfg.mode === 'membrane-only' || cfg.mode === 'pid-homeostat';
+     }
+     if (group === 'Dither (colour target)') return cfg.mode === 'dither';
     if (cfg.mode === 'pid') return true;
     if (group === 'Target' || group === 'State expression') return false;
-    if (group === 'PID gains') return cfg.mode === 'pid-homeostat';
+     if (group === 'PID gains') return cfg.mode === 'pid-homeostat' || cfg.mode === 'dither';
     return true;
   }
 
@@ -832,7 +1014,16 @@ export class UI {
     const theme = themeFromConfig(cfg);
     const rgb = rgbCss;
 
-    if (cfg.mode !== 'pid') {
+     if (cfg.mode === 'dither') {
+       // Every palette entry is one expressible state.
+       parsePalette(cfg.ditherPalette).forEach((hex, k) => {
+         const item = el('div', 'legend-item');
+         const swatch = el('span', 'swatch');
+         swatch.style.background = hex;
+         item.append(swatch, el('span', null, 'state ' + k + ' · ' + hex));
+         root.appendChild(item);
+       });
+     } else if (cfg.mode !== 'pid') {
       const names = ['polarized (gate closed)', 'firing (gate open)', 'refractory'];
       for (let s = 0; s < 3; s++) {
         const item = el('div', 'legend-item');
@@ -886,24 +1077,28 @@ export class UI {
 
     if (cfg.overlay !== 'none') {
       const item = el('div', 'legend-item');
+       const ditherImage = cfg.mode === 'dither' && cfg.overlay === 'target';
       const label =
-        cfg.overlay === 'voltage'
-          ? 'overlay: V (' + cfg.vMin + ' → ' + cfg.vRest + ' → ' + cfg.vMax + ')'
-          : cfg.overlay === 'target'
-            ? 'overlay: T(c) relative to ' +
-              cfg.target +
-              ' (blue below, red above), ±' +
-              cfg.overlayScale
-            : 'overlay: ' + cfg.overlay + ' (blue −, red +), ±' + cfg.overlayScale;
+         ditherImage
+           ? 'overlay: colour target T(c) — what each neighbourhood is trying to average to'
+           : cfg.overlay === 'voltage'
+             ? 'overlay: V (' + cfg.vMin + ' → ' + cfg.vRest + ' → ' + cfg.vMax + ')'
+             : cfg.overlay === 'target'
+               ? 'overlay: T(c) relative to ' +
+                 cfg.target +
+                 ' (blue below, red above), ±' +
+                 cfg.overlayScale
+               : 'overlay: ' + cfg.overlay + ' (blue −, red +), ±' + cfg.overlayScale;
       const ramp = el('span', 'swatch ramp');
-      ramp.style.background =
-        'linear-gradient(90deg,' +
-        rgb(theme.overlayCold) +
-        ',' +
-        rgb(theme.overlayMid) +
-        ',' +
-        rgb(theme.overlayWarm) +
-        ')';
+       ramp.style.background = ditherImage
+         ? 'linear-gradient(90deg,' + cfg.ditherColorA + ',' + cfg.ditherColorB + ')'
+         : 'linear-gradient(90deg,' +
+           rgb(theme.overlayCold) +
+           ',' +
+           rgb(theme.overlayMid) +
+           ',' +
+           rgb(theme.overlayWarm) +
+           ')';
       item.append(ramp, el('span', null, label));
       root.appendChild(item);
     }
@@ -1003,7 +1198,11 @@ export class UI {
         event.preventDefault();
         return;
       }
-      if (cfg.mode !== 'pid') {
+       if (cfg.mode === 'dither') {
+         // brush writes a palette index; shift / right button paints colour 0
+         const n = Math.max(1, this.sim.paletteSize | 0);
+         paintValue = erase ? 0 : Math.min(n - 1, Math.max(0, cfg.ditherPaintIndex | 0));
+       } else if (cfg.mode !== 'pid') {
         paintValue = erase ? 0 : 1;
       } else if (event.altKey && cfg.stateMin < 0) {
         // alt paints the negative extreme of the signed range
@@ -1081,7 +1280,7 @@ export class UI {
    */
   _paint(x, y, value) {
     const cfg = this.config.all();
-    if (cfg.mode === 'pid') {
+     if (cfg.mode === 'pid' || cfg.mode === 'dither') {
       this.sim.paintCell(x, y, value);
       return;
     }

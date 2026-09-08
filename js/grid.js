@@ -259,6 +259,36 @@ export function sumNeighborVoltageDelta(grid, V, x, y, offsets, boundary) {
   }
   return sum;
 }
+/**
+  * Σ_{n ∈ N(c)} colour(s_n): accumulate the palette colours of the neighbours
+  * into `out` (length-3 array, caller zeroes it) and return how many
+  * neighbours contributed (§11). `palette` is a flat [r,g,b,…] Float32Array
+  * indexed by state; `states` is passed explicitly for a frozen snapshot.
+  */
+export function sumNeighborColors(grid, states, palette, x, y, offsets, boundary, out) {
+   const w = grid.width;
+   const h = grid.height;
+   let count = 0;
+   for (let k = 0; k < offsets.length; k += 2) {
+     let nx = x + offsets[k];
+     let ny = y + offsets[k + 1];
+     if (boundary === 'toroidal') {
+       nx = wrapIndex(nx, w);
+       ny = wrapIndex(ny, h);
+     } else if (boundary === 'reflective') {
+       nx = reflectIndex(nx, w);
+       ny = reflectIndex(ny, h);
+     } else if (nx < 0 || ny < 0 || nx >= w || ny >= h) {
+       continue;
+     }
+     const s = states[ny * w + nx] * 3;
+     out[0] += palette[s];
+     out[1] += palette[s + 1];
+     out[2] += palette[s + 2];
+     count++;
+   }
+   return count;
+}
 
 export class Grid {
   constructor(width, height) {
@@ -300,6 +330,30 @@ export class Grid {
     this.stimulus = new Float32Array(this.size);
     this.clamped = new Uint8Array(this.size);
     this.clampV = new Float32Array(this.size);
+     // ---- Dither-CA colour substrate (§11); allocated lazily -----------------
+     this.targetRGB = null;
+     this.prevErrorRGB = null;
+     this.nextPrevErrorRGB = null;
+     this.integralRGB = null;
+     this.nextIntegralRGB = null;
+     this.uRGB = null;
+     this.errorRGB = null;
+   }
+   /**
+    * Allocate the three-channel target / controller / diagnostic buffers used
+    * by the Dither-CA domain. Idempotent; called by the simulation on demand
+    * so the other domains pay nothing for them.
+    */
+   ensureColorBuffers() {
+     const n = this.size * 3;
+     if (this.targetRGB && this.targetRGB.length === n) return;
+     this.targetRGB = new Float32Array(n);
+     this.prevErrorRGB = new Float32Array(n);
+     this.nextPrevErrorRGB = new Float32Array(n);
+     this.integralRGB = new Float32Array(n);
+     this.nextIntegralRGB = new Float32Array(n);
+     this.uRGB = new Float32Array(n);
+     this.errorRGB = new Float32Array(n);
   }
 
   index(x, y) {
@@ -354,6 +408,14 @@ export class Grid {
     tmp = this.restTicks;
     this.restTicks = this.nextRestTicks;
     this.nextRestTicks = tmp;
+     if (this.prevErrorRGB) {
+       tmp = this.prevErrorRGB;
+       this.prevErrorRGB = this.nextPrevErrorRGB;
+       this.nextPrevErrorRGB = tmp;
+       tmp = this.integralRGB;
+       this.integralRGB = this.nextIntegralRGB;
+       this.nextIntegralRGB = tmp;
+     }
   }
 
   clearControllerState() {
@@ -363,6 +425,14 @@ export class Grid {
     this.nextIntegral.fill(0);
     this.u.fill(0);
     this.error.fill(0);
+     if (this.prevErrorRGB) {
+       this.prevErrorRGB.fill(0);
+       this.nextPrevErrorRGB.fill(0);
+       this.integralRGB.fill(0);
+       this.nextIntegralRGB.fill(0);
+       this.uRGB.fill(0);
+       this.errorRGB.fill(0);
+     }
   }
 
   clearStates() {
