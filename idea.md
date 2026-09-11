@@ -152,7 +152,7 @@ that presets can be saved, loaded, and shared.
 
 ## 6. System Architecture
 
-The application is a static, client-side, browser-based system: a single `index.html` entry point loading modular ES6
+The application is a static, client-side, browser-based system: a single `paper.html` entry point loading modular ES6
 JavaScript via `<script type="module">`. No build step, bundler, or server-side component is required by the
 specification, though the modular structure should not preclude later bundling.
 
