@@ -36,10 +36,10 @@ export const DEFAULT_THEME = {
   negLow: NEG_LOW,
   negHigh: NEG_HIGH,
   membrane: MEMBRANE_COLORS,
-   dither: [
-     [0, 0, 0],
-     [255, 255, 255],
-   ],
+  dither: [
+    [0, 0, 0],
+    [255, 255, 255],
+  ],
   overlayMid: OVERLAY_MID,
   overlayCold: OVERLAY_COLD,
   overlayWarm: OVERLAY_WARM,
@@ -63,7 +63,7 @@ const THEME_KEYS = [
   'overlayAlpha',
   'colorGridLines',
   'gridLineAlpha',
-   'ditherPalette',
+  'ditherPalette',
 ];
 /** `#rrggbb` / `#rgb` → [r, g, b]; `fallback` on anything unparseable. */
 export function hexToRgb(hex, fallback = [0, 0, 0]) {
@@ -103,8 +103,8 @@ export function themeFromConfig(cfg) {
       hexToRgb(cfg.colorFiring, MEMBRANE_COLORS[1]),
       hexToRgb(cfg.colorRefractory, MEMBRANE_COLORS[2]),
     ],
-     // Dither-CA: the palette *is* the state colouring (§11).
-     dither: parsePalette(cfg.ditherPalette).map((hex) => hexToRgb(hex)),
+    // Dither-CA: the palette *is* the state colouring (§11).
+    dither: parsePalette(cfg.ditherPalette).map((hex) => hexToRgb(hex)),
     overlayMid: hexToRgb(cfg.colorOverlayMid, OVERLAY_MID),
     overlayCold: hexToRgb(cfg.colorOverlayLow, OVERLAY_COLD),
     overlayWarm: hexToRgb(cfg.colorOverlayHigh, OVERLAY_WARM),
@@ -225,13 +225,13 @@ export class Renderer {
     const states = grid.states;
     const scale = Math.max(0.0001, cfg.overlayScale);
     const pid = cfg.mode === 'pid';
-     const dither = cfg.mode === 'dither';
+    const dither = cfg.mode === 'dither';
     const theme = this._themeFor(cfg);
-     const palette = dither
-       ? theme.dither
-       : pid
-         ? this._statePalette(cfg.stateMin, cfg.stateMax, theme)
-         : theme.membrane;
+    const palette = dither
+      ? theme.dither
+      : pid
+        ? this._statePalette(cfg.stateMin, cfg.stateMax, theme)
+        : theme.membrane;
     const mid = theme.overlayMid;
     const alpha = theme.overlayAlpha;
     // Signed states are stored as-is, so shift into palette space.
@@ -239,9 +239,9 @@ export class Renderer {
     const voltageOverlay = cfg.overlay === 'voltage';
     // The target field is shown relative to the scalar T (its neutral value).
     const targetOverlay = cfg.overlay === 'target';
-     // Dither-CA: the "target" overlay blends in the colour target image itself.
-     const imageField = dither && targetOverlay && grid.targetRGB ? grid.targetRGB : null;
-     const overlay = imageField ? null : this._overlayBuffer(grid, cfg.overlay);
+    // Dither-CA: the "target" overlay blends in the colour target image itself.
+    const imageField = dither && targetOverlay && grid.targetRGB ? grid.targetRGB : null;
+    const overlay = imageField ? null : this._overlayBuffer(grid, cfg.overlay);
     const hotSpan = Math.max(1e-6, cfg.vMax - cfg.vRest);
     const coldSpan = Math.max(1e-6, cfg.vRest - cfg.vMin);
 
@@ -251,12 +251,12 @@ export class Renderer {
         g = base[1],
         b = base[2];
 
-       if (imageField) {
-         const j = idx * 3;
-         r = r * (1 - alpha) + imageField[j] * 255 * alpha;
-         g = g * (1 - alpha) + imageField[j + 1] * 255 * alpha;
-         b = b * (1 - alpha) + imageField[j + 2] * 255 * alpha;
-       } else if (overlay) {
+      if (imageField) {
+        const j = idx * 3;
+        r = r * (1 - alpha) + imageField[j] * 255 * alpha;
+        g = g * (1 - alpha) + imageField[j + 1] * 255 * alpha;
+        b = b * (1 - alpha) + imageField[j + 2] * 255 * alpha;
+      } else if (overlay) {
         // Voltage maps V_min (cold) → V_rest (neutral) → V_max (hot) (§7).
         let t = voltageOverlay
           ? (overlay[idx] - cfg.vRest) / (overlay[idx] >= cfg.vRest ? hotSpan : coldSpan)

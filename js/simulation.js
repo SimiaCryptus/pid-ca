@@ -7,11 +7,11 @@
  */
 
 import {
-   SCHEMA,
-   targetAt,
-   isTargetSpatiallyUniform,
-   TEXT_FIELD_KEYS,
-   DITHER_TARGET_KEYS,
+  SCHEMA,
+  targetAt,
+  isTargetSpatiallyUniform,
+  TEXT_FIELD_KEYS,
+  DITHER_TARGET_KEYS,
 } from './config.js';
 import {
   Grid,
@@ -21,7 +21,7 @@ import {
   countActiveNeighbors,
   sumNeighborStates,
   sumNeighborVoltageDelta,
-   sumNeighborColors,
+  sumNeighborColors,
   makeActivePredicate,
   createRng,
   makeGaussianSampler,
@@ -31,14 +31,14 @@ import { expressState, expressBioelectrical } from './stateExpression.js';
 import { membraneStep, makeMembraneInput, makeMembraneOutput } from './membrane.js';
 import { forEachLineCell, rasterizeText, fitTextBlock, fontStack } from './raster.js';
 import {
-   parsePalette,
-   paletteToFloats,
-   hexToUnit,
-   COLOR_WEIGHTS,
-   nearestPaletteIndex,
-   fillGradientField,
-   sampleImageToField,
-   quantizePalette,
+  parsePalette,
+  paletteToFloats,
+  hexToUnit,
+  COLOR_WEIGHTS,
+  nearestPaletteIndex,
+  fillGradientField,
+  sampleImageToField,
+  quantizePalette,
 } from './dither.js';
 
 export class Simulation {
@@ -71,18 +71,18 @@ export class Simulation {
     this._rateSteps = 0;
     this._rateT0 = 0;
     this._tick = this._tick.bind(this);
-     // ---- Dither-CA scratch buffers + image sources (§11) -----------------
-     this._colorAcc = new Float32Array(3);
-     this._want = new Float32Array(3);
-     this._distScratch = new Float32Array(2);
-     this._colorWeights = COLOR_WEIGHTS.rgb;
-     this._ditherUpload = null;
-     this._ditherUploadLabel = '';
-     this._ditherUrlImage = null;
-     this._ditherUrl = null;
-     this._ditherUrlError = null;
-     /** Human-readable description of the current colour target (UI read-out). */
-     this.ditherImageInfo = '';
+    // ---- Dither-CA scratch buffers + image sources (§11) -----------------
+    this._colorAcc = new Float32Array(3);
+    this._want = new Float32Array(3);
+    this._distScratch = new Float32Array(2);
+    this._colorWeights = COLOR_WEIGHTS.rgb;
+    this._ditherUpload = null;
+    this._ditherUploadLabel = '';
+    this._ditherUrlImage = null;
+    this._ditherUrl = null;
+    this._ditherUrlError = null;
+    /** Human-readable description of the current colour target (UI read-out). */
+    this.ditherImageInfo = '';
 
     this._unsubscribe = config.subscribe((changed) => this._onConfigChange(changed));
     this.reset();
@@ -109,20 +109,20 @@ export class Simulation {
 
   // ------------------------------------------------------- config reaction
   _onConfigChange(changed) {
-     const cfg = this.config.all();
+    const cfg = this.config.all();
     const structural = changed.some((k) => SCHEMA[k] && SCHEMA[k].structural);
-     if (cfg.mode === 'pid' && (changed.includes('stateMin') || changed.includes('stateMax'))) {
-       this.grid.clampStates(cfg.stateMin, cfg.stateMax);
+    if (cfg.mode === 'pid' && (changed.includes('stateMin') || changed.includes('stateMax'))) {
+      this.grid.clampStates(cfg.stateMin, cfg.stateMax);
     }
     this._refreshDerived();
-     if (cfg.mode === 'dither') {
-       // Palette edits re-index the states; target edits regenerate T(c) live.
-       if (changed.includes('ditherPalette')) this.grid.clampStates(0, this.paletteSize - 1);
-       if (changed.some((k) => DITHER_TARGET_KEYS.includes(k))) {
-         this._syncDitherImageUrl(cfg);
-         this._refreshDitherTarget();
-       }
-     }
+    if (cfg.mode === 'dither') {
+      // Palette edits re-index the states; target edits regenerate T(c) live.
+      if (changed.includes('ditherPalette')) this.grid.clampStates(0, this.paletteSize - 1);
+      if (changed.some((k) => DITHER_TARGET_KEYS.includes(k))) {
+        this._syncDitherImageUrl(cfg);
+        this._refreshDitherTarget();
+      }
+    }
     if (structural) {
       this.reset();
       return;
@@ -143,14 +143,14 @@ export class Simulation {
     this.isActive = makeActivePredicate(cfg.activePredicate, cfg);
     this.sumMode = cfg.neighborMetric === 'sum';
     this.maxNeighbors = this.offsets.length / 2;
-     // Dither-CA palette (cheap; kept current in every mode so paint tools work).
-     this.paletteHex = parsePalette(cfg.ditherPalette);
-     this.paletteRGB = paletteToFloats(this.paletteHex);
-     this.paletteSize = this.paletteHex.length;
-     this._colorWeights = COLOR_WEIGHTS[cfg.ditherMetric] || COLOR_WEIGHTS.rgb;
-     if (this._distScratch.length !== this.paletteSize) {
-       this._distScratch = new Float32Array(this.paletteSize);
-     }
+    // Dither-CA palette (cheap; kept current in every mode so paint tools work).
+    this.paletteHex = parsePalette(cfg.ditherPalette);
+    this.paletteRGB = paletteToFloats(this.paletteHex);
+    this.paletteSize = this.paletteHex.length;
+    this._colorWeights = COLOR_WEIGHTS[cfg.ditherMetric] || COLOR_WEIGHTS.rgb;
+    if (this._distScratch.length !== this.paletteSize) {
+      this._distScratch = new Float32Array(this.paletteSize);
+    }
   }
   /** N_t(c): either the active-neighbour count or the signed neighbour sum. */
   _neighborMeasure(states, x, y, boundary) {
@@ -174,12 +174,12 @@ export class Simulation {
     if (cfg.mode === 'pid') {
       populate(this.grid, cfg, this.rng);
       this._seedControllerState();
-     } else if (cfg.mode === 'dither') {
-       this.grid.ensureColorBuffers();
-       this._syncDitherImageUrl(cfg);
-       this._refreshDitherTarget();
-       this._populateDither(cfg);
-       this._seedDitherState();
+    } else if (cfg.mode === 'dither') {
+      this.grid.ensureColorBuffers();
+      this._syncDitherImageUrl(cfg);
+      this._refreshDitherTarget();
+      this._populateDither(cfg);
+      this._seedDitherState();
     } else {
       populateMembrane(this.grid, cfg, this.rng);
       this._seedMembraneState();
@@ -197,9 +197,9 @@ export class Simulation {
     this.grid.clearControllerState();
     if (cfg.mode === 'pid') {
       this._seedControllerState();
-     } else if (cfg.mode === 'dither') {
-       // all cells = palette colour 0, controller memory re-seeded
-       this._seedDitherState();
+    } else if (cfg.mode === 'dither') {
+      // all cells = palette colour 0, controller memory re-seeded
+      this._seedDitherState();
     } else {
       this.grid.clearMembrane(cfg.vRest);
       this._seedMembraneState();
@@ -261,155 +261,179 @@ export class Simulation {
 
   /** Live intervention / painting (§7.7). Controller memory is preserved. */
   paintCell(x, y, value) {
-     let v = value;
-     if (this.config.get('mode') === 'dither') {
-       v = Math.max(0, Math.min(this.paletteSize - 1, v | 0));
-     }
-     this.grid.setState(x, y, v);
+    let v = value;
+    if (this.config.get('mode') === 'dither') {
+      v = Math.max(0, Math.min(this.paletteSize - 1, v | 0));
+    }
+    this.grid.setState(x, y, v);
     this.emit('paint', { x, y, value });
   }
-   // ---------------------------------------------- Dither-CA: colour target T(c)
-   /** Initial palette indices for the dither domain (§11). */
-   _populateDither(cfg) {
-     const g = this.grid;
-     const n = this.paletteSize;
-     g.clearStates();
-     const states = g.states;
-     switch (cfg.ditherInit) {
-       case 'first':
-         break;
-       case 'nearest': {
-         const T = g.targetRGB;
-         const pal = this.paletteRGB;
-         const w = this._colorWeights;
-         for (let i = 0, j = 0; i < g.size; i++, j += 3) {
-           states[i] = nearestPaletteIndex(pal, n, T[j], T[j + 1], T[j + 2], w);
-         }
-         break;
-       }
-       case 'random':
-       default:
-         for (let i = 0; i < g.size; i++) states[i] = Math.floor(this.rng() * n);
-         break;
-     }
-   }
-   /** Seed per-channel e_(t-1) from the initial neighbourhood so D_0 = 0. */
-   _seedDitherState() {
-     const cfg = this.config.all();
-     const g = this.grid;
-     g.ensureColorBuffers();
-     const pal = this.paletteRGB;
-     const acc = this._colorAcc;
-     const T = g.targetRGB;
-     for (let y = 0; y < g.height; y++) {
-       for (let x = 0; x < g.width; x++) {
-         const idx = y * g.width + x;
-         acc[0] = acc[1] = acc[2] = 0;
-         let count = sumNeighborColors(g, g.states, pal, x, y, this.offsets, cfg.boundary, acc);
-         if (cfg.ditherIncludeSelf) {
-           const s = g.states[idx] * 3;
-           acc[0] += pal[s];
-           acc[1] += pal[s + 1];
-           acc[2] += pal[s + 2];
-           count++;
-         }
-         const inv = count ? 1 / count : 0;
-         let eSum = 0;
-         for (let c = 0; c < 3; c++) {
-           const j = idx * 3 + c;
-           const e = T[j] - acc[c] * inv;
-           g.prevErrorRGB[j] = e;
-           g.errorRGB[j] = e;
-           g.integralRGB[j] = 0;
-           g.uRGB[j] = 0;
-           eSum += e;
-         }
-         g.error[idx] = eSum / 3;
-         g.prevError[idx] = eSum / 3;
-         g.integral[idx] = 0;
-         g.u[idx] = 0;
-       }
-     }
-   }
-   /**
-    * (Re)generate the colour target field from the configured source. Image
-    * sources fall back to the gradient until an image is available/readable.
-    */
-   _refreshDitherTarget() {
-     const cfg = this.config.all();
-     const g = this.grid;
-     g.ensureColorBuffers();
-     const a = hexToUnit(cfg.ditherColorA);
-     const b = hexToUnit(cfg.ditherColorB);
-     let info = '';
-     if (cfg.ditherSource === 'image') {
-       const image = this._ditherUpload || this._ditherUrlImage;
-       if (image) {
-         const field = sampleImageToField(image, g.width, g.height, cfg.ditherImageFit, cfg.ditherColorA);
-         if (field) {
-           g.targetRGB.set(field);
-           const iw = image.naturalWidth || image.width;
-           const ih = image.naturalHeight || image.height;
-           this.ditherImageInfo =
-             (this._ditherUpload ? this._ditherUploadLabel || 'uploaded image' : 'image URL') +
-             ' ' + iw + '×' + ih + ' → ' + g.width + '×' + g.height + ' cells (' + cfg.ditherImageFit + ')';
-           return;
-         }
-         info = 'image could not be read (cross-origin without CORS?) — showing the gradient instead';
-       } else if (this._ditherUrlError) {
-         info = this._ditherUrlError + ' — showing the gradient instead';
-       } else if (this._ditherUrl) {
-         info = 'loading ' + this._ditherUrl + ' …';
-       } else {
-         info = 'no image loaded — upload one or set an image URL; showing the gradient';
-       }
-     }
-     fillGradientField(g.targetRGB, g.width, g.height, a, cfg.ditherSource === 'solid' ? a : b, cfg.ditherGradient);
-     this.ditherImageInfo = info;
-   }
-   /** Start / cancel loading of `ditherImageUrl`; the result lands in T(c) asynchronously. */
-   _syncDitherImageUrl(cfg) {
-     const url = cfg.ditherSource === 'image' ? String(cfg.ditherImageUrl || '').trim() : '';
-     if (url === this._ditherUrl) return;
-     this._ditherUrl = url;
-     this._ditherUrlImage = null;
-     this._ditherUrlError = null;
-     if (!url || typeof Image !== 'function') return;
-     const img = new Image();
-     img.crossOrigin = 'anonymous';
-     img.onload = () => {
-       if (this._ditherUrl !== url) return;
-       this._ditherUrlImage = img;
-       this._refreshDitherTarget();
-       this.emit('paint', { target: true, dither: true });
-     };
-     img.onerror = () => {
-       if (this._ditherUrl !== url) return;
-       this._ditherUrlError = 'could not load image URL ' + url;
-       this._refreshDitherTarget();
-       this.emit('paint', { target: true, dither: true });
-     };
-     img.src = url;
-   }
-   /**
-    * Use an uploaded image (HTMLImageElement / ImageBitmap / canvas) as the
-    * colour target. Overrides `ditherImageUrl` until cleared. The controller
-    * memory is kept, so the texture morphs toward the new picture.
-    */
-   setDitherImage(image, label) {
-     this._ditherUpload = image || null;
-     this._ditherUploadLabel = label ? String(label) : '';
-     if (this.config.get('mode') === 'dither') this._refreshDitherTarget();
-     this.emit('paint', { target: true, dither: true });
-   }
-   clearDitherImage() {
-     this.setDitherImage(null);
-   }
-   /** k-means the current colour target into `k` palette colours (hex list). */
-   extractPalette(k) {
-     if (!this.grid.targetRGB) return null;
-     return quantizePalette(this.grid.targetRGB, k);
-   }
+  // ---------------------------------------------- Dither-CA: colour target T(c)
+  /** Initial palette indices for the dither domain (§11). */
+  _populateDither(cfg) {
+    const g = this.grid;
+    const n = this.paletteSize;
+    g.clearStates();
+    const states = g.states;
+    switch (cfg.ditherInit) {
+      case 'first':
+        break;
+      case 'nearest': {
+        const T = g.targetRGB;
+        const pal = this.paletteRGB;
+        const w = this._colorWeights;
+        for (let i = 0, j = 0; i < g.size; i++, j += 3) {
+          states[i] = nearestPaletteIndex(pal, n, T[j], T[j + 1], T[j + 2], w);
+        }
+        break;
+      }
+      case 'random':
+      default:
+        for (let i = 0; i < g.size; i++) states[i] = Math.floor(this.rng() * n);
+        break;
+    }
+  }
+  /** Seed per-channel e_(t-1) from the initial neighbourhood so D_0 = 0. */
+  _seedDitherState() {
+    const cfg = this.config.all();
+    const g = this.grid;
+    g.ensureColorBuffers();
+    const pal = this.paletteRGB;
+    const acc = this._colorAcc;
+    const T = g.targetRGB;
+    for (let y = 0; y < g.height; y++) {
+      for (let x = 0; x < g.width; x++) {
+        const idx = y * g.width + x;
+        acc[0] = acc[1] = acc[2] = 0;
+        let count = sumNeighborColors(g, g.states, pal, x, y, this.offsets, cfg.boundary, acc);
+        if (cfg.ditherIncludeSelf) {
+          const s = g.states[idx] * 3;
+          acc[0] += pal[s];
+          acc[1] += pal[s + 1];
+          acc[2] += pal[s + 2];
+          count++;
+        }
+        const inv = count ? 1 / count : 0;
+        let eSum = 0;
+        for (let c = 0; c < 3; c++) {
+          const j = idx * 3 + c;
+          const e = T[j] - acc[c] * inv;
+          g.prevErrorRGB[j] = e;
+          g.errorRGB[j] = e;
+          g.integralRGB[j] = 0;
+          g.uRGB[j] = 0;
+          eSum += e;
+        }
+        g.error[idx] = eSum / 3;
+        g.prevError[idx] = eSum / 3;
+        g.integral[idx] = 0;
+        g.u[idx] = 0;
+      }
+    }
+  }
+  /**
+   * (Re)generate the colour target field from the configured source. Image
+   * sources fall back to the gradient until an image is available/readable.
+   */
+  _refreshDitherTarget() {
+    const cfg = this.config.all();
+    const g = this.grid;
+    g.ensureColorBuffers();
+    const a = hexToUnit(cfg.ditherColorA);
+    const b = hexToUnit(cfg.ditherColorB);
+    let info = '';
+    if (cfg.ditherSource === 'image') {
+      const image = this._ditherUpload || this._ditherUrlImage;
+      if (image) {
+        const field = sampleImageToField(
+          image,
+          g.width,
+          g.height,
+          cfg.ditherImageFit,
+          cfg.ditherColorA
+        );
+        if (field) {
+          g.targetRGB.set(field);
+          const iw = image.naturalWidth || image.width;
+          const ih = image.naturalHeight || image.height;
+          this.ditherImageInfo =
+            (this._ditherUpload ? this._ditherUploadLabel || 'uploaded image' : 'image URL') +
+            ' ' +
+            iw +
+            '×' +
+            ih +
+            ' → ' +
+            g.width +
+            '×' +
+            g.height +
+            ' cells (' +
+            cfg.ditherImageFit +
+            ')';
+          return;
+        }
+        info =
+          'image could not be read (cross-origin without CORS?) — showing the gradient instead';
+      } else if (this._ditherUrlError) {
+        info = this._ditherUrlError + ' — showing the gradient instead';
+      } else if (this._ditherUrl) {
+        info = 'loading ' + this._ditherUrl + ' …';
+      } else {
+        info = 'no image loaded — upload one or set an image URL; showing the gradient';
+      }
+    }
+    fillGradientField(
+      g.targetRGB,
+      g.width,
+      g.height,
+      a,
+      cfg.ditherSource === 'solid' ? a : b,
+      cfg.ditherGradient
+    );
+    this.ditherImageInfo = info;
+  }
+  /** Start / cancel loading of `ditherImageUrl`; the result lands in T(c) asynchronously. */
+  _syncDitherImageUrl(cfg) {
+    const url = cfg.ditherSource === 'image' ? String(cfg.ditherImageUrl || '').trim() : '';
+    if (url === this._ditherUrl) return;
+    this._ditherUrl = url;
+    this._ditherUrlImage = null;
+    this._ditherUrlError = null;
+    if (!url || typeof Image !== 'function') return;
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      if (this._ditherUrl !== url) return;
+      this._ditherUrlImage = img;
+      this._refreshDitherTarget();
+      this.emit('paint', { target: true, dither: true });
+    };
+    img.onerror = () => {
+      if (this._ditherUrl !== url) return;
+      this._ditherUrlError = 'could not load image URL ' + url;
+      this._refreshDitherTarget();
+      this.emit('paint', { target: true, dither: true });
+    };
+    img.src = url;
+  }
+  /**
+   * Use an uploaded image (HTMLImageElement / ImageBitmap / canvas) as the
+   * colour target. Overrides `ditherImageUrl` until cleared. The controller
+   * memory is kept, so the texture morphs toward the new picture.
+   */
+  setDitherImage(image, label) {
+    this._ditherUpload = image || null;
+    this._ditherUploadLabel = label ? String(label) : '';
+    if (this.config.get('mode') === 'dither') this._refreshDitherTarget();
+    this.emit('paint', { target: true, dither: true });
+  }
+  clearDitherImage() {
+    this.setDitherImage(null);
+  }
+  /** k-means the current colour target into `k` palette colours (hex list). */
+  extractPalette(k) {
+    if (!this.grid.targetRGB) return null;
+    return quantizePalette(this.grid.targetRGB, k);
+  }
   // ------------------------------------------------ painted target field T(c)
   /** Per-cell target buffer for the field-backed modes, else null. */
   _targetBuffer(cfg) {
@@ -560,7 +584,7 @@ export class Simulation {
   step() {
     const cfg = this.config.all();
     if (cfg.mode === 'pid') this._stepPid(cfg);
-     else if (cfg.mode === 'dither') this._stepDither(cfg);
+    else if (cfg.mode === 'dither') this._stepDither(cfg);
     else this._stepMembrane(cfg);
     this.time++;
     this._measure();
@@ -623,133 +647,133 @@ export class Simulation {
     // (d) atomic buffer swap
     g.commit();
   }
-   /**
-    * Dither-CA step (§11). For every cell: measure the mean palette colour of
-    * the neighbourhood (frozen snapshot), run one PID update per channel on
-    * e = T(c) − mean, then express the palette colour nearest T(c) + u_t.
-    * Hysteresis biases the current colour, temperature makes the choice a
-    * seeded softmin sample, and the update rate makes the CA asynchronous.
-    */
-   _stepDither(cfg) {
-     const g = this.grid;
-     g.ensureColorBuffers();
-     const st = g.states,
-       nst = g.nextStates;
-     const pe = g.prevErrorRGB,
-       npe = g.nextPrevErrorRGB;
-     const ig = g.integralRGB,
-       nig = g.nextIntegralRGB;
-     const uRGB = g.uRGB,
-       eRGB = g.errorRGB;
-     // scalar (channel-mean) diagnostics keep the u / e / I overlays working
-     const uS = g.u,
-       eS = g.error,
-       nigS = g.nextIntegral,
-       npeS = g.nextPrevError;
-     const T = g.targetRGB;
-     const pal = this.paletteRGB;
-     const n = this.paletteSize;
-     const offsets = this.offsets;
-     const boundary = cfg.boundary;
-     const includeSelf = cfg.ditherIncludeSelf;
-     const kp = cfg.kp,
-       ki = cfg.ki,
-       kd = cfg.kd;
-     const clampI = cfg.integralClamp,
-       iMin = cfg.integralMin,
-       iMax = cfg.integralMax;
-     const hyst = cfg.ditherHysteresis;
-     const temp = cfg.ditherTemperature;
-     const rate = cfg.ditherUpdateRate;
-     const w = this._colorWeights;
-     const rng = this.rng;
-     const acc = this._colorAcc;
-     const want = this._want;
-     const dist = this._distScratch;
-     for (let y = 0; y < g.height; y++) {
-       const row = y * g.width;
-       for (let x = 0; x < g.width; x++) {
-         const idx = row + x;
-         const j = idx * 3;
-         // (a) mean neighbourhood colour from the frozen snapshot
-         acc[0] = acc[1] = acc[2] = 0;
-         let count = sumNeighborColors(g, st, pal, x, y, offsets, boundary, acc);
-         const cur = st[idx];
-         if (includeSelf) {
-           const s = cur * 3;
-           acc[0] += pal[s];
-           acc[1] += pal[s + 1];
-           acc[2] += pal[s + 2];
-           count++;
-         }
-         const inv = count ? 1 / count : 0;
-         // (b) per-channel PID; the desired colour is T + u
-         let eSum = 0,
-           uSum = 0,
-           iSum = 0;
-         for (let c = 0; c < 3; c++) {
-           const t = T[j + c];
-           const e = t - acc[c] * inv;
-           let i = ig[j + c] + ki * e;
-           if (clampI) {
-             if (i < iMin) i = iMin;
-             else if (i > iMax) i = iMax;
-           }
-           const u = kp * e + i + kd * (e - pe[j + c]);
-           npe[j + c] = e;
-           nig[j + c] = i;
-           uRGB[j + c] = u;
-           eRGB[j + c] = e;
-           want[c] = t + u;
-           eSum += e;
-           uSum += u;
-           iSum += i;
-         }
-         eS[idx] = eSum / 3;
-         uS[idx] = uSum / 3;
-         nigS[idx] = iSum / 3;
-         npeS[idx] = eSum / 3;
-         // (c) express: nearest palette colour (asynchronous / stochastic options)
-         if (rate < 1 && rng() >= rate) {
-           nst[idx] = cur;
-           continue;
-         }
-         let best = 0;
-         let bestD = Infinity;
-         for (let k = 0, q = 0; k < n; k++, q += 3) {
-           const dr = pal[q] - want[0];
-           const dg = pal[q + 1] - want[1];
-           const db = pal[q + 2] - want[2];
-           let d = Math.sqrt(w[0] * dr * dr + w[1] * dg * dg + w[2] * db * db);
-           if (k === cur && hyst > 0) d = d > hyst ? d - hyst : 0;
-           dist[k] = d;
-           if (d < bestD) {
-             bestD = d;
-             best = k;
-           }
-         }
-         if (temp > 0) {
-           let sum = 0;
-           for (let k = 0; k < n; k++) {
-             const wk = Math.exp(-(dist[k] - bestD) / temp);
-             dist[k] = wk;
-             sum += wk;
-           }
-           let r = rng() * sum;
-           for (let k = 0; k < n; k++) {
-             r -= dist[k];
-             if (r <= 0) {
-               best = k;
-               break;
-             }
-           }
-         }
-         nst[idx] = best;
-       }
-     }
-     // (d) atomic buffer swap
-     g.commit();
-   }
+  /**
+   * Dither-CA step (§11). For every cell: measure the mean palette colour of
+   * the neighbourhood (frozen snapshot), run one PID update per channel on
+   * e = T(c) − mean, then express the palette colour nearest T(c) + u_t.
+   * Hysteresis biases the current colour, temperature makes the choice a
+   * seeded softmin sample, and the update rate makes the CA asynchronous.
+   */
+  _stepDither(cfg) {
+    const g = this.grid;
+    g.ensureColorBuffers();
+    const st = g.states,
+      nst = g.nextStates;
+    const pe = g.prevErrorRGB,
+      npe = g.nextPrevErrorRGB;
+    const ig = g.integralRGB,
+      nig = g.nextIntegralRGB;
+    const uRGB = g.uRGB,
+      eRGB = g.errorRGB;
+    // scalar (channel-mean) diagnostics keep the u / e / I overlays working
+    const uS = g.u,
+      eS = g.error,
+      nigS = g.nextIntegral,
+      npeS = g.nextPrevError;
+    const T = g.targetRGB;
+    const pal = this.paletteRGB;
+    const n = this.paletteSize;
+    const offsets = this.offsets;
+    const boundary = cfg.boundary;
+    const includeSelf = cfg.ditherIncludeSelf;
+    const kp = cfg.kp,
+      ki = cfg.ki,
+      kd = cfg.kd;
+    const clampI = cfg.integralClamp,
+      iMin = cfg.integralMin,
+      iMax = cfg.integralMax;
+    const hyst = cfg.ditherHysteresis;
+    const temp = cfg.ditherTemperature;
+    const rate = cfg.ditherUpdateRate;
+    const w = this._colorWeights;
+    const rng = this.rng;
+    const acc = this._colorAcc;
+    const want = this._want;
+    const dist = this._distScratch;
+    for (let y = 0; y < g.height; y++) {
+      const row = y * g.width;
+      for (let x = 0; x < g.width; x++) {
+        const idx = row + x;
+        const j = idx * 3;
+        // (a) mean neighbourhood colour from the frozen snapshot
+        acc[0] = acc[1] = acc[2] = 0;
+        let count = sumNeighborColors(g, st, pal, x, y, offsets, boundary, acc);
+        const cur = st[idx];
+        if (includeSelf) {
+          const s = cur * 3;
+          acc[0] += pal[s];
+          acc[1] += pal[s + 1];
+          acc[2] += pal[s + 2];
+          count++;
+        }
+        const inv = count ? 1 / count : 0;
+        // (b) per-channel PID; the desired colour is T + u
+        let eSum = 0,
+          uSum = 0,
+          iSum = 0;
+        for (let c = 0; c < 3; c++) {
+          const t = T[j + c];
+          const e = t - acc[c] * inv;
+          let i = ig[j + c] + ki * e;
+          if (clampI) {
+            if (i < iMin) i = iMin;
+            else if (i > iMax) i = iMax;
+          }
+          const u = kp * e + i + kd * (e - pe[j + c]);
+          npe[j + c] = e;
+          nig[j + c] = i;
+          uRGB[j + c] = u;
+          eRGB[j + c] = e;
+          want[c] = t + u;
+          eSum += e;
+          uSum += u;
+          iSum += i;
+        }
+        eS[idx] = eSum / 3;
+        uS[idx] = uSum / 3;
+        nigS[idx] = iSum / 3;
+        npeS[idx] = eSum / 3;
+        // (c) express: nearest palette colour (asynchronous / stochastic options)
+        if (rate < 1 && rng() >= rate) {
+          nst[idx] = cur;
+          continue;
+        }
+        let best = 0;
+        let bestD = Infinity;
+        for (let k = 0, q = 0; k < n; k++, q += 3) {
+          const dr = pal[q] - want[0];
+          const dg = pal[q + 1] - want[1];
+          const db = pal[q + 2] - want[2];
+          let d = Math.sqrt(w[0] * dr * dr + w[1] * dg * dg + w[2] * db * db);
+          if (k === cur && hyst > 0) d = d > hyst ? d - hyst : 0;
+          dist[k] = d;
+          if (d < bestD) {
+            bestD = d;
+            best = k;
+          }
+        }
+        if (temp > 0) {
+          let sum = 0;
+          for (let k = 0; k < n; k++) {
+            const wk = Math.exp(-(dist[k] - bestD) / temp);
+            dist[k] = wk;
+            sum += wk;
+          }
+          let r = rng() * sum;
+          for (let k = 0; k < n; k++) {
+            r -= dist[k];
+            if (r <= 0) {
+              best = k;
+              break;
+            }
+          }
+        }
+        nst[idx] = best;
+      }
+    }
+    // (d) atomic buffer swap
+    g.commit();
+  }
   /**
    * Bioelectrical membrane step (bioelectrical.md §4). Neighbour voltages are
    * read from the frozen snapshot only; no cell observes another cell's gate.
@@ -814,12 +838,12 @@ export class Simulation {
   }
 
   _measure() {
-     const mode = this.config.get('mode');
-     if (mode === 'dither') {
-       this._measureDither();
-       return;
-     }
-     if (mode !== 'pid') {
+    const mode = this.config.get('mode');
+    if (mode === 'dither') {
+      this._measureDither();
+      return;
+    }
+    if (mode !== 'pid') {
       this._measureMembrane();
       return;
     }
@@ -847,61 +871,61 @@ export class Simulation {
       meanV: 0,
     };
   }
-   _measureDither() {
-     const g = this.grid;
-     g.ensureColorBuffers();
-     const pal = this.paletteRGB;
-     const st = g.states,
-       e = g.errorRGB,
-       I = g.integralRGB,
-       T = g.targetRGB;
-     let sumAbs = 0,
-       sumSq = 0,
-       sumI = 0,
-       nonzero = 0;
-     let gr = 0,
-       gg = 0,
-       gb = 0,
-       tr = 0,
-       tg = 0,
-       tb = 0;
-     for (let i = 0, j = 0; i < g.size; i++, j += 3) {
-       if (st[i] !== 0) nonzero++;
-       const s = st[i] * 3;
-       gr += pal[s];
-       gg += pal[s + 1];
-       gb += pal[s + 2];
-       tr += T[j];
-       tg += T[j + 1];
-       tb += T[j + 2];
-       for (let c = 0; c < 3; c++) {
-         const v = e[j + c];
-         sumAbs += Math.abs(v);
-         sumSq += v * v;
-         sumI += I[j + c];
-       }
-     }
-     const inv = 1 / g.size;
-     const gridMean = [gr * inv, gg * inv, gb * inv];
-     const targetMean = [tr * inv, tg * inv, tb * inv];
-     this.stats = {
-       step: this.time,
-       activeFraction: nonzero / g.size,
-       meanAbsError: sumAbs / (g.size * 3),
-       energy: sumSq,
-       meanIntegral: sumI / (g.size * 3),
-       firingFraction: 0,
-       refractoryFraction: 0,
-       meanV: 0,
-       gridMean,
-       targetMean,
-       globalDelta: Math.hypot(
-         gridMean[0] - targetMean[0],
-         gridMean[1] - targetMean[1],
-         gridMean[2] - targetMean[2]
-       ),
-     };
-   }
+  _measureDither() {
+    const g = this.grid;
+    g.ensureColorBuffers();
+    const pal = this.paletteRGB;
+    const st = g.states,
+      e = g.errorRGB,
+      I = g.integralRGB,
+      T = g.targetRGB;
+    let sumAbs = 0,
+      sumSq = 0,
+      sumI = 0,
+      nonzero = 0;
+    let gr = 0,
+      gg = 0,
+      gb = 0,
+      tr = 0,
+      tg = 0,
+      tb = 0;
+    for (let i = 0, j = 0; i < g.size; i++, j += 3) {
+      if (st[i] !== 0) nonzero++;
+      const s = st[i] * 3;
+      gr += pal[s];
+      gg += pal[s + 1];
+      gb += pal[s + 2];
+      tr += T[j];
+      tg += T[j + 1];
+      tb += T[j + 2];
+      for (let c = 0; c < 3; c++) {
+        const v = e[j + c];
+        sumAbs += Math.abs(v);
+        sumSq += v * v;
+        sumI += I[j + c];
+      }
+    }
+    const inv = 1 / g.size;
+    const gridMean = [gr * inv, gg * inv, gb * inv];
+    const targetMean = [tr * inv, tg * inv, tb * inv];
+    this.stats = {
+      step: this.time,
+      activeFraction: nonzero / g.size,
+      meanAbsError: sumAbs / (g.size * 3),
+      energy: sumSq,
+      meanIntegral: sumI / (g.size * 3),
+      firingFraction: 0,
+      refractoryFraction: 0,
+      meanV: 0,
+      gridMean,
+      targetMean,
+      globalDelta: Math.hypot(
+        gridMean[0] - targetMean[0],
+        gridMean[1] - targetMean[1],
+        gridMean[2] - targetMean[2]
+      ),
+    };
+  }
   _measureMembrane() {
     const g = this.grid;
     let open = 0,

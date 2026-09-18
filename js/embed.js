@@ -311,27 +311,27 @@ export class PIDCAWidget {
   _updateStatus() {
     if (!this.statusNode) return;
     const s = this.simulation.stats;
-     const mode = this.config.get('mode');
-     let parts;
-     if (mode === 'dither') {
-       parts = [
-         ['step', String(s.step)],
-         ['mean |e|', s.meanAbsError.toFixed(4)],
-         ['global Δ', (s.globalDelta || 0).toFixed(4)],
-       ];
-     } else if (mode !== 'pid') {
-       parts = [
-         ['step', String(s.step)],
-         ['firing', ((s.firingFraction || 0) * 100).toFixed(2) + '%'],
-         ['mean V', (s.meanV || 0).toFixed(2)],
-       ];
-     } else {
-       parts = [
-         ['step', String(s.step)],
-         ['active', (s.activeFraction * 100).toFixed(1) + '%'],
-         ['mean |e|', s.meanAbsError.toFixed(3)],
-       ];
-     }
+    const mode = this.config.get('mode');
+    let parts;
+    if (mode === 'dither') {
+      parts = [
+        ['step', String(s.step)],
+        ['mean |e|', s.meanAbsError.toFixed(4)],
+        ['global Δ', (s.globalDelta || 0).toFixed(4)],
+      ];
+    } else if (mode !== 'pid') {
+      parts = [
+        ['step', String(s.step)],
+        ['firing', ((s.firingFraction || 0) * 100).toFixed(2) + '%'],
+        ['mean V', (s.meanV || 0).toFixed(2)],
+      ];
+    } else {
+      parts = [
+        ['step', String(s.step)],
+        ['active', (s.activeFraction * 100).toFixed(1) + '%'],
+        ['mean |e|', s.meanAbsError.toFixed(3)],
+      ];
+    }
     this.statusNode.textContent = parts.map(([k, v]) => k + ' ' + v).join('   ·   ');
   }
 
@@ -382,9 +382,13 @@ export class PIDCAWidget {
       const cfg = this.config.all();
       if (cfg.mode === 'pid') {
         this.simulation.paintCell(cell.x, cell.y, erase ? 0 : cfg.stateMax);
-       } else if (cfg.mode === 'dither') {
-         const n = Math.max(1, this.simulation.paletteSize | 0);
-         this.simulation.paintCell(cell.x, cell.y, erase ? 0 : Math.min(n - 1, cfg.ditherPaintIndex | 0));
+      } else if (cfg.mode === 'dither') {
+        const n = Math.max(1, this.simulation.paletteSize | 0);
+        this.simulation.paintCell(
+          cell.x,
+          cell.y,
+          erase ? 0 : Math.min(n - 1, cfg.ditherPaintIndex | 0)
+        );
       } else {
         this.simulation.paintStimulus(cell.x, cell.y, erase ? 0 : cfg.stimulusAmplitude);
       }

@@ -273,7 +273,10 @@ export function quantizePalette(field, k, iterations = 16) {
       const s = sum[c];
       if (!s[3]) continue;
       const nc = [s[0] / s[3], s[1] / s[3], s[2] / s[3]];
-      moved += Math.abs(nc[0] - centres[c][0]) + Math.abs(nc[1] - centres[c][1]) + Math.abs(nc[2] - centres[c][2]);
+      moved +=
+        Math.abs(nc[0] - centres[c][0]) +
+        Math.abs(nc[1] - centres[c][1]) +
+        Math.abs(nc[2] - centres[c][2]);
       centres[c] = nc;
     }
     if (moved < 1e-4) break;

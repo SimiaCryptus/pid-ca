@@ -68,14 +68,13 @@ export const DITHER_INITS = ['random', 'nearest', 'first'];
 export const DITHER_METRICS = ['rgb', 'perceptual'];
 /** Keys whose change requires regenerating the colour target field T(c). */
 export const DITHER_TARGET_KEYS = [
-   'ditherSource',
-   'ditherColorA',
-   'ditherColorB',
-   'ditherGradient',
-   'ditherImageUrl',
-   'ditherImageFit',
+  'ditherSource',
+  'ditherColorA',
+  'ditherColorB',
+  'ditherGradient',
+  'ditherImageUrl',
+  'ditherImageFit',
 ];
-
 
 export const GROUPS = [
   'Model',
@@ -84,7 +83,7 @@ export const GROUPS = [
   'PID gains',
   'State expression',
   'Membrane (bioelectrical)',
-   'Dither (colour target)',
+  'Dither (colour target)',
   'Initialisation',
   'Painting',
   'Playback',
@@ -126,9 +125,9 @@ export const SCHEMA = {
       pid: 'PID controller (base model)',
       'membrane-only': 'Bioelectrical membrane',
       'pid-homeostat': 'Membrane + PID homeostat',
-       dither: 'Dither-CA (palette states seeking a colour)',
+      dither: 'Dither-CA (palette states seeking a colour)',
     },
-     hint: 'Membrane modes replace the neighbour-count controller with the excitable-membrane rule. Dither-CA regulates the mean colour of each neighbourhood toward a target image using palette colours as states.',
+    hint: 'Membrane modes replace the neighbour-count controller with the excitable-membrane rule. Dither-CA regulates the mean colour of each neighbourhood toward a target image using palette colours as states.',
   },
 
   // ---------------------------------------------------------------- topology
@@ -570,20 +569,20 @@ export const SCHEMA = {
     default: 0.1,
     visible: (cfg) => isPid(cfg) && cfg.perturbInit !== 'none',
   },
-   ditherInit: {
-     group: 'Initialisation',
-     label: 'Initial colouring',
-     type: 'enum',
-     options: DITHER_INITS,
-     default: 'random',
-     optionLabels: {
-       random: 'Random palette colours',
-       nearest: 'Nearest palette colour to the target',
-       first: 'Everything = palette colour 0',
-     },
-     visible: isDither,
-     hint: 'Random lets you watch the picture emerge; nearest starts from a posterised image the CA then refines.',
-   },
+  ditherInit: {
+    group: 'Initialisation',
+    label: 'Initial colouring',
+    type: 'enum',
+    options: DITHER_INITS,
+    default: 'random',
+    optionLabels: {
+      random: 'Random palette colours',
+      nearest: 'Nearest palette colour to the target',
+      first: 'Everything = palette colour 0',
+    },
+    visible: isDither,
+    hint: 'Random lets you watch the picture emerge; nearest starts from a posterised image the CA then refines.',
+  },
   // ------------------------------------------------- membrane (§3.4–§3.6, §5)
   vRest: {
     group: 'Membrane (bioelectrical)',
@@ -769,117 +768,120 @@ export const SCHEMA = {
     default: 3,
     visible: (cfg) => isMembrane(cfg) && cfg.membraneInit === 'noisy-rest',
   },
-   // ------------------------------------------------- Dither-CA (§11)
-   ditherSource: {
-     group: 'Dither (colour target)',
-     label: 'Target colour source',
-     type: 'enum',
-     options: DITHER_SOURCES,
-     default: 'gradient',
-     optionLabels: {
-       solid: 'Solid colour',
-       gradient: 'Two-colour gradient',
-       image: 'Image (upload or URL)',
-     },
-     hint: 'T(c) is the colour each neighbourhood tries to average to.',
-   },
-   ditherColorA: {
-     group: 'Dither (colour target)',
-     label: 'Colour A (solid / gradient start)',
-     type: 'color',
-     default: '#2b1055',
-     hint: 'Also the letterbox colour when an image is fitted with "contain".',
-   },
-   ditherColorB: {
-     group: 'Dither (colour target)',
-     label: 'Colour B (gradient end)',
-     type: 'color',
-     default: '#f9c74f',
-     visible: (cfg) => cfg.ditherSource === 'gradient',
-   },
-   ditherGradient: {
-     group: 'Dither (colour target)',
-     label: 'Gradient direction',
-     type: 'enum',
-     options: DITHER_GRADIENTS,
-     default: 'diagonal',
-     optionLabels: {
-       horizontal: 'Horizontal (A → B)',
-       vertical: 'Vertical (A → B)',
-       diagonal: 'Diagonal',
-       radial: 'Radial (A at centre)',
-     },
-     visible: (cfg) => cfg.ditherSource === 'gradient',
-   },
-   ditherImageUrl: {
-     group: 'Dither (colour target)',
-     label: 'Image URL',
-     type: 'text',
-     default: '',
-     visible: (cfg) => cfg.ditherSource === 'image',
-     hint: 'Same-origin or CORS-enabled URL (travels with share links and embeds). Or use "Upload image…" below.',
-   },
-   ditherImageFit: {
-     group: 'Dither (colour target)',
-     label: 'Image fit',
-     type: 'enum',
-     options: DITHER_FITS,
-     default: 'cover',
-     optionLabels: { cover: 'Cover (crop)', contain: 'Contain (letterbox)', stretch: 'Stretch' },
-     visible: (cfg) => cfg.ditherSource === 'image',
-   },
-   ditherPalette: {
-     group: 'Dither (colour target)',
-     label: 'Palette (expressible states)',
-     type: 'palette',
-     default: '#000000,#ffffff',
-     hint: 'Each colour is one discrete state (2–' + MAX_PALETTE + '). Click a swatch to edit, or paste a comma-separated hex list.',
-   },
-   ditherMetric: {
-     group: 'Dither (colour target)',
-     label: 'Colour distance',
-     type: 'enum',
-     options: DITHER_METRICS,
-     default: 'rgb',
-     optionLabels: { rgb: 'Plain RGB', perceptual: 'Luma-weighted (perceptual)' },
-   },
-   ditherIncludeSelf: {
-     group: 'Dither (colour target)',
-     label: 'Include the cell in its own mean',
-     type: 'bool',
-     default: true,
-     hint: 'Off: the cell compensates purely for its neighbours (sharper, more restless textures).',
-   },
-   ditherHysteresis: {
-     group: 'Dither (colour target)',
-     label: 'Hysteresis (keep-current bonus)',
-     type: 'float',
-     min: 0,
-     max: 0.5,
-     step: 0.005,
-     default: 0.03,
-     hint: 'A cell only changes colour when another palette entry is closer by more than this (colour units 0–1). 0 = restless.',
-   },
-   ditherTemperature: {
-     group: 'Dither (colour target)',
-     label: 'Temperature (stochastic choice)',
-     type: 'float',
-     min: 0,
-     max: 0.5,
-     step: 0.005,
-     default: 0,
-     hint: '0 = always the nearest colour. >0 samples colours with probability ∝ exp(−distance/T) — annealing-style dithering (seeded, so still reproducible).',
-   },
-   ditherUpdateRate: {
-     group: 'Dither (colour target)',
-     label: 'Update rate (fraction of cells / step)',
-     type: 'float',
-     min: 0.01,
-     max: 1,
-     step: 0.01,
-     default: 1,
-     hint: 'Below 1 the update becomes asynchronous, which suppresses synchronous flicker.',
-   },
+  // ------------------------------------------------- Dither-CA (§11)
+  ditherSource: {
+    group: 'Dither (colour target)',
+    label: 'Target colour source',
+    type: 'enum',
+    options: DITHER_SOURCES,
+    default: 'gradient',
+    optionLabels: {
+      solid: 'Solid colour',
+      gradient: 'Two-colour gradient',
+      image: 'Image (upload or URL)',
+    },
+    hint: 'T(c) is the colour each neighbourhood tries to average to.',
+  },
+  ditherColorA: {
+    group: 'Dither (colour target)',
+    label: 'Colour A (solid / gradient start)',
+    type: 'color',
+    default: '#2b1055',
+    hint: 'Also the letterbox colour when an image is fitted with "contain".',
+  },
+  ditherColorB: {
+    group: 'Dither (colour target)',
+    label: 'Colour B (gradient end)',
+    type: 'color',
+    default: '#f9c74f',
+    visible: (cfg) => cfg.ditherSource === 'gradient',
+  },
+  ditherGradient: {
+    group: 'Dither (colour target)',
+    label: 'Gradient direction',
+    type: 'enum',
+    options: DITHER_GRADIENTS,
+    default: 'diagonal',
+    optionLabels: {
+      horizontal: 'Horizontal (A → B)',
+      vertical: 'Vertical (A → B)',
+      diagonal: 'Diagonal',
+      radial: 'Radial (A at centre)',
+    },
+    visible: (cfg) => cfg.ditherSource === 'gradient',
+  },
+  ditherImageUrl: {
+    group: 'Dither (colour target)',
+    label: 'Image URL',
+    type: 'text',
+    default: '',
+    visible: (cfg) => cfg.ditherSource === 'image',
+    hint: 'Same-origin or CORS-enabled URL (travels with share links and embeds). Or use "Upload image…" below.',
+  },
+  ditherImageFit: {
+    group: 'Dither (colour target)',
+    label: 'Image fit',
+    type: 'enum',
+    options: DITHER_FITS,
+    default: 'cover',
+    optionLabels: { cover: 'Cover (crop)', contain: 'Contain (letterbox)', stretch: 'Stretch' },
+    visible: (cfg) => cfg.ditherSource === 'image',
+  },
+  ditherPalette: {
+    group: 'Dither (colour target)',
+    label: 'Palette (expressible states)',
+    type: 'palette',
+    default: '#000000,#ffffff',
+    hint:
+      'Each colour is one discrete state (2–' +
+      MAX_PALETTE +
+      '). Click a swatch to edit, or paste a comma-separated hex list.',
+  },
+  ditherMetric: {
+    group: 'Dither (colour target)',
+    label: 'Colour distance',
+    type: 'enum',
+    options: DITHER_METRICS,
+    default: 'rgb',
+    optionLabels: { rgb: 'Plain RGB', perceptual: 'Luma-weighted (perceptual)' },
+  },
+  ditherIncludeSelf: {
+    group: 'Dither (colour target)',
+    label: 'Include the cell in its own mean',
+    type: 'bool',
+    default: true,
+    hint: 'Off: the cell compensates purely for its neighbours (sharper, more restless textures).',
+  },
+  ditherHysteresis: {
+    group: 'Dither (colour target)',
+    label: 'Hysteresis (keep-current bonus)',
+    type: 'float',
+    min: 0,
+    max: 0.5,
+    step: 0.005,
+    default: 0.03,
+    hint: 'A cell only changes colour when another palette entry is closer by more than this (colour units 0–1). 0 = restless.',
+  },
+  ditherTemperature: {
+    group: 'Dither (colour target)',
+    label: 'Temperature (stochastic choice)',
+    type: 'float',
+    min: 0,
+    max: 0.5,
+    step: 0.005,
+    default: 0,
+    hint: '0 = always the nearest colour. >0 samples colours with probability ∝ exp(−distance/T) — annealing-style dithering (seeded, so still reproducible).',
+  },
+  ditherUpdateRate: {
+    group: 'Dither (colour target)',
+    label: 'Update rate (fraction of cells / step)',
+    type: 'float',
+    min: 0.01,
+    max: 1,
+    step: 0.01,
+    default: 1,
+    hint: 'Below 1 the update becomes asynchronous, which suppresses synchronous flicker.',
+  },
 
   // ---------------------------------------------------------------- painting
   paintLayer: {
@@ -1042,17 +1044,17 @@ export const SCHEMA = {
     visible: (cfg) => isMembrane(cfg) && cfg.membraneTool !== 'stimulus',
     hint: 'Also used by the "clamped pacemaker" initial condition.',
   },
-   ditherPaintIndex: {
-     group: 'Painting',
-     label: 'Paint palette colour (index)',
-     type: 'int',
-     min: 0,
-     max: MAX_PALETTE - 1,
-     step: 1,
-     default: 1,
-     visible: isDither,
-     hint: 'Palette entry written by the brush / fill. Shift-drag or right-drag paints colour 0.',
-   },
+  ditherPaintIndex: {
+    group: 'Painting',
+    label: 'Paint palette colour (index)',
+    type: 'int',
+    min: 0,
+    max: MAX_PALETTE - 1,
+    step: 1,
+    default: 1,
+    visible: isDither,
+    hint: 'Palette entry written by the brush / fill. Shift-drag or right-drag paints colour 0.',
+  },
 
   // ---------------------------------------------------------------- playback
   stepsPerSecond: {
@@ -1097,7 +1099,7 @@ export const SCHEMA = {
       integral: 'Integral I_t (frustration)',
       error: 'Error e_t',
       voltage: 'Membrane potential V',
-       target: 'Target field T(c) / colour target image',
+      target: 'Target field T(c) / colour target image',
     },
   },
   overlayScale: {
@@ -1422,15 +1424,15 @@ export function validateConfig(raw) {
       case 'mask':
         config[key] = String(value).replace(/[^01]/g, '');
         break;
-       case 'palette': {
-         const list = parsePalette(value, null);
-         if (!list) {
-           errors.push(key + ': needs at least two #rrggbb colours');
-           break;
-         }
-         config[key] = list.join(',');
-         break;
-       }
+      case 'palette': {
+        const list = parsePalette(value, null);
+        if (!list) {
+          errors.push(key + ': needs at least two #rrggbb colours');
+          break;
+        }
+        config[key] = list.join(',');
+        break;
+      }
       case 'enum': {
         const match = spec.options.find((o) => o === value || String(o) === String(value));
         if (match === undefined) {
@@ -1475,9 +1477,9 @@ export function validateConfig(raw) {
   if (config.stateMin === 0 && (config.expression === 'signed' || config.expression === 'levels')) {
     errors.push('signed expressions are intended for state min < 0 (currently 0)');
   }
-   // ---- Dither-CA invariants (§11) -----------------------------------------
-   const paletteSize = parsePalette(config.ditherPalette).length;
-   if (config.ditherPaintIndex > paletteSize - 1) config.ditherPaintIndex = paletteSize - 1;
+  // ---- Dither-CA invariants (§11) -----------------------------------------
+  const paletteSize = parsePalette(config.ditherPalette).length;
+  if (config.ditherPaintIndex > paletteSize - 1) config.ditherPaintIndex = paletteSize - 1;
   // ---- membrane invariants (bioelectrical.md §5) -------------------------
   const maxN = maxNeighborCount(config);
   if (config.kCoupling * maxN > 1) {

@@ -1,10 +1,41 @@
 <html>
-<body>
-<!-- PID-regulated cellular automaton — embedded widget -->
-<div data-pidca data-pidca-controls="none" data-pidca-autoplay="true" data-pidca-lazy="true" data-pidca-interactive="false" data-pidca-status="false">
-    <script type="application/json" data-pidca-config>{"mode":"dither","gridWidth":400,"gridHeight":198,"boundary":"reflective","radius":3,"kp":1.2,"ki":0.08,"kd":0.3,"integralMin":-1.5,"integralMax":1.5,"seed":306820,"kCoupling":0.021,"ditherColorA":"#ff004d","ditherColorB":"#29adff","ditherGradient":"horizontal","ditherPalette":"#ffffff,#00aeef,#ec008c,#fff200,#231f20","ditherMetric":"perceptual","ditherHysteresis":0.05,"ditherTemperature":0.01,"ditherUpdateRate":0.5,"stepsPerSecond":24,"cellSize":4}</script>
-</div>
-<script type="module" src="https://math.cognotik.com/ca/pid-ca/js/embed.js"></script>
-
-</body>
+  <body>
+    <!-- PID-regulated cellular automaton — embedded widget -->
+    <div
+      data-pidca
+      data-pidca-controls="none"
+      data-pidca-autoplay="true"
+      data-pidca-lazy="true"
+      data-pidca-interactive="false"
+      data-pidca-status="false"
+    >
+      <script type="application/json" data-pidca-config>
+        {
+          "mode": "dither",
+          "gridWidth": 400,
+          "gridHeight": 198,
+          "boundary": "reflective",
+          "radius": 3,
+          "kp": 1.2,
+          "ki": 0.08,
+          "kd": 0.3,
+          "integralMin": -1.5,
+          "integralMax": 1.5,
+          "seed": 306820,
+          "kCoupling": 0.021,
+          "ditherColorA": "#ff004d",
+          "ditherColorB": "#29adff",
+          "ditherGradient": "horizontal",
+          "ditherPalette": "#ffffff,#00aeef,#ec008c,#fff200,#231f20",
+          "ditherMetric": "perceptual",
+          "ditherHysteresis": 0.05,
+          "ditherTemperature": 0.01,
+          "ditherUpdateRate": 0.5,
+          "stepsPerSecond": 24,
+          "cellSize": 4
+        }
+      </script>
+    </div>
+    <script type="module" src="https://math.cognotik.com/ca/pid-ca/js/embed.js"></script>
+  </body>
 </html>
